@@ -106,7 +106,7 @@ export function Act1Dialog({ open, onOpenChange }: Act1DialogProps) {
               <div className="text-center space-y-6">
                 <div className="text-6xl mb-4">🎭✨</div>
                 <div className="space-y-3">
-                  <h2 className="text-2xl font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
+                  <h2 className="text-2xl font-bold text-brand w-fit mx-auto">
                     Welcome to Act 2!
                   </h2>
                   <p className="text-lg text-muted-foreground max-w-lg mx-auto">

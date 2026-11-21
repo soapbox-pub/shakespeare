@@ -865,7 +865,7 @@ export const ChatPane = forwardRef<ChatPaneRef, ChatPaneProps>(({
                   <ShakespeareLogo className="w-16 h-16 mx-auto" />
                 </div>
                 <div>
-                  <h3 className="text-xl font-semibold mb-2 bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
+                  <h3 className="text-xl font-semibold mb-2 text-brand w-fit mx-auto">
                     {t('welcomeToShakespeare')}
                   </h3>
                   <p className="text-muted-foreground mb-6 leading-relaxed">

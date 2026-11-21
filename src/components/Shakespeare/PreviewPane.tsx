@@ -840,7 +840,7 @@ export function PreviewPane({ projectId, activeTab, onToggleView, isPreviewable 
           {isMobile ? (
             <div className="h-full flex flex-col min-h-0">
               {/* Mobile Code view header */}
-              <div className="h-12 px-4 border-b flex items-center bg-gradient-to-r from-muted/20 to-background flex-shrink-0">
+              <div className="h-12 px-4 border-b flex items-center bg-background flex-shrink-0">
                 <BranchSwitcher projectId={projectId} />
                 <div className="flex-1" />
                 <Button
@@ -874,7 +874,7 @@ export function PreviewPane({ projectId, activeTab, onToggleView, isPreviewable 
                 </div>
               ) : (
                 <>
-                  <div className="p-3 border-b bg-gradient-to-r from-primary/5 to-accent/5 flex items-center gap-2">
+                  <div className="p-3 border-b bg-muted/40 flex items-center gap-2">
                     <Button
                       variant="ghost"
                       size="sm"
@@ -883,7 +883,7 @@ export function PreviewPane({ projectId, activeTab, onToggleView, isPreviewable 
                     >
                       <ArrowLeft className="h-4 w-4" />
                     </Button>
-                    <h3 className="font-semibold flex-1 truncate bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
+                    <h3 className="font-semibold flex-1 truncate text-brand">
                       {selectedFile ? selectedFile.split('/').pop() : t('fileEditor')}
                     </h3>
                     <GitStatusIndicator projectId={projectId} />
@@ -923,7 +923,7 @@ export function PreviewPane({ projectId, activeTab, onToggleView, isPreviewable 
             <div className="h-full flex flex-col">
               {/* Code view header with back button */}
               {!isMobile && onToggleView && isPreviewable && (
-                <div className="h-12 px-4 border-b flex items-center bg-gradient-to-r from-muted/20 to-background gap-3">
+                <div className="h-12 px-4 border-b flex items-center bg-background gap-3">
                   <Button
                     variant="ghost"
                     size="sm"
@@ -949,7 +949,7 @@ export function PreviewPane({ projectId, activeTab, onToggleView, isPreviewable 
               )}
               {/* Code view header without back button for non-previewable projects */}
               {!isMobile && !isPreviewable && (
-                <div className="h-12 px-4 border-b flex items-center bg-gradient-to-r from-muted/20 to-background">
+                <div className="h-12 px-4 border-b flex items-center bg-background">
                   <div className="flex-1" />
                   <BranchSwitcher projectId={projectId} />
                   <Button

@@ -6,6 +6,7 @@ import { ProjectSidebar } from '@/components/ProjectSidebar';
 import { Button } from '@/components/ui/button';
 import { Menu } from 'lucide-react';
 import { useIsMobile } from '@/hooks/useIsMobile';
+import { cn } from '@/lib/utils';
 
 interface AppLayoutProps {
   children: React.ReactNode;
@@ -70,9 +71,9 @@ export function AppLayout({
 
   if (isMobile) {
     return (
-      <div className="min-h-dvh bg-gradient-to-br from-primary/5 to-accent/5">
+      <div className="min-h-dvh bg-background">
         {/* Mobile Header */}
-        <header className="bg-gradient-to-r from-primary/10 via-accent/5 to-primary/10 backdrop-blur pt-safe">
+        <header className="sticky top-0 z-40 bg-background/80 backdrop-blur pt-safe">
           <div className="h-12 px-4 py-3 flex items-center justify-between border-b">
             <div className="flex items-center space-x-2">
               {showSidebar && (
@@ -120,40 +121,43 @@ export function AppLayout({
   }
 
   return (
-    <div className="min-h-screen flex bg-background">
-      {/* Fixed Sidebar - show if showSidebar is true and sidebar is visible */}
+    <div className="h-dvh flex overflow-hidden bg-sidebar">
+      {/* Sidebar, on the window's tint - show if showSidebar is true and sidebar is visible */}
       {showSidebar && isSidebarVisible && (
-        <div className="w-72 border-r bg-sidebar transition-all duration-300">
+        <div className="w-72 flex-shrink-0">
           <ProjectSidebar
             selectedProject={selectedProject}
             onSelectProject={handleProjectSelect}
-            className="h-screen sticky top-0"
+            className="h-full"
             onToggleSidebar={() => setIsSidebarVisible(false)}
           />
         </div>
       )}
 
-      {/* Main Content Area */}
-      <div className="flex-1 flex flex-col bg-background">
-        <div className="min-h-screen bg-gradient-to-br from-primary/5 to-accent/5 relative">
-          {/* Show open button when sidebar is collapsed */}
-          {showSidebar && !isSidebarVisible && (
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => setIsSidebarVisible(true)}
-              className="absolute top-2 left-4 h-8 w-8 p-0 z-10 bg-transparent backdrop-blur-sm hover:bg-transparent text-foreground/70 hover:text-foreground"
-              aria-label="Open sidebar"
-            >
-              <Menu className="h-4 w-4" />
-            </Button>
-          )}
+      {/* Main Content Area, in a rounded panel */}
+      <main
+        className={cn(
+          "relative flex-1 min-w-0 my-2 mr-2 overflow-y-auto rounded-2xl border bg-background shadow-panel",
+          !(showSidebar && isSidebarVisible) && "ml-2",
+        )}
+      >
+        {/* Show open button when sidebar is collapsed */}
+        {showSidebar && !isSidebarVisible && (
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setIsSidebarVisible(true)}
+            className="absolute top-2 left-2 h-8 w-8 p-0 z-10 rounded-lg text-foreground/70 hover:text-foreground hover:bg-muted"
+            aria-label="Open sidebar"
+          >
+            <Menu className="h-4 w-4" />
+          </Button>
+        )}
 
-          <div className="container mx-auto px-4 py-6 md:py-8">
-            {children}
-          </div>
+        <div className="container mx-auto px-4 py-6 md:py-8">
+          {children}
         </div>
-      </div>
+      </main>
     </div>
   );
 }

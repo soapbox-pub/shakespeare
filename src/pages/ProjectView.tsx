@@ -198,7 +198,7 @@ export function ProjectView() {
   if (isMobile) {
     return (
       <div className="h-dvh flex flex-col bg-background">
-        <header className="pt-safe bg-gradient-to-r from-primary/10 via-accent/5 to-primary/10 backdrop-blur">
+        <header className="pt-safe bg-background/80 backdrop-blur">
           <div className="h-12 border-b p-2 flex items-center justify-between">
             <div className="flex items-center space-x-2 overflow-hidden">
               <Button
@@ -318,7 +318,7 @@ export function ProjectView() {
           )}
         </div>
 
-        <div className="border-t bg-gradient-to-r from-primary/5 via-background to-accent/5 backdrop-blur pb-safe">
+        <div className="border-t bg-background/80 backdrop-blur pb-safe">
           <div className="flex">
             <Button
               variant="ghost"
@@ -401,9 +401,9 @@ export function ProjectView() {
   }
 
   return (
-    <div className="h-screen flex bg-background">
-      {/* Fixed Sidebar */}
-      <div className={`w-72 border-r bg-sidebar duration-300 ${isSidebarVisible ? 'block' : 'hidden'}`}>
+    <div className="h-dvh flex overflow-hidden bg-sidebar">
+      {/* Fixed Sidebar, on the window's tint */}
+      <div className={`w-72 flex-shrink-0 ${isSidebarVisible ? 'block' : 'hidden'}`}>
         <ProjectSidebar
           selectedProject={project}
           onSelectProject={(selectedProject) => {
@@ -419,13 +419,13 @@ export function ProjectView() {
         />
       </div>
 
-      {/* Main Content Area */}
-      <div className="flex-1 flex flex-col overflow-hidden bg-background">
+      {/* Main Content Area: the chat and the preview, each in a rounded panel */}
+      <div className={cn("flex-1 min-w-0 flex flex-col overflow-hidden py-2 pr-2", !isSidebarVisible && "pl-2")}>
         <div className="flex-1 overflow-hidden">
           <ResizablePanelGroup direction="horizontal" className="h-full">
             {/* Chat Panel */}
             <ResizablePanel defaultSize={35} minSize={25}>
-              <div className="h-full flex flex-col">
+              <div className="h-full flex flex-col overflow-hidden rounded-2xl border bg-background">
                 {/* Chat Header */}
                 <div className="h-12 px-4 border-b flex-shrink-0">
                   <div className="flex items-center justify-between h-12">
@@ -436,7 +436,7 @@ export function ProjectView() {
                           variant="ghost"
                           size="sm"
                           onClick={() => setIsSidebarVisible(true)}
-                          className="h-8 w-8 p-0"
+                          className="h-8 w-8 p-0 rounded-lg hover:bg-muted"
                           aria-label="Open sidebar"
                         >
                           <Menu className="h-4 w-4" />
@@ -514,12 +514,12 @@ export function ProjectView() {
               </div>
             </ResizablePanel>
 
-            {/* Resizable Handle */}
-            <ResizableHandle withHandle />
+            {/* Resizable Handle, in the gap between the panels */}
+            <ResizableHandle className="w-2 bg-transparent after:w-2 [&>div]:opacity-0 hover:[&>div]:opacity-100 data-[resize-handle-state=drag]:[&>div]:opacity-100 [&>div]:transition-opacity" withHandle />
 
             {/* Preview/Code Panel */}
             <ResizablePanel defaultSize={65} minSize={30}>
-              <div className="h-full">
+              <div className="h-full overflow-hidden rounded-2xl border bg-background">
                 {project ? (
                   <PreviewPane
                     projectId={project.id}

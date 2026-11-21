@@ -10,6 +10,7 @@ import { useIsMobile } from '@/hooks/useIsMobile';
 import { type Project } from '@/lib/ProjectsManager';
 import { getSettingsCategories } from '@/lib/settingsItems';
 import { SettingsItem } from '@/components/SettingsItem';
+import { cn } from '@/lib/utils';
 
 export function SettingsLayout() {
   const { t } = useTranslation();
@@ -111,10 +112,10 @@ export function SettingsLayout() {
 
   // Desktop 3-column layout
   return (
-    <div className="h-screen flex bg-background overflow-hidden">
-      {/* Left Column - Projects Sidebar (optionally hidden) */}
+    <div className="h-dvh flex bg-sidebar overflow-hidden">
+      {/* Left Column - Projects Sidebar (optionally hidden), on the window's tint */}
       {isSidebarVisible && (
-        <div className="w-72 border-r bg-sidebar flex-shrink-0">
+        <div className="w-72 flex-shrink-0">
           <ProjectSidebar
             selectedProject={null}
             onSelectProject={handleProjectSelect}
@@ -124,63 +125,69 @@ export function SettingsLayout() {
         </div>
       )}
 
-      {/* Middle Column - Settings Navigation */}
-      <div className="w-72 border-r bg-background flex flex-col flex-shrink-0">
-        {/* Header with toggle button */}
-        <div className="h-12 px-4 py-2 border-b flex-shrink-0">
-          <div className="flex items-center gap-3">
-            {!isSidebarVisible && (
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setIsSidebarVisible(true)}
-                className="h-8 w-8 p-0"
-                aria-label={t('openSidebar')}
-              >
-                <Menu className="h-4 w-4" />
-              </Button>
-            )}
-            <h1 className="text-xl font-bold flex items-center gap-2">
-              {t('settings')}
-            </h1>
+      {/* Settings navigation and content, in a rounded panel */}
+      <div className={cn(
+        "flex-1 min-w-0 flex my-2 mr-2 overflow-hidden rounded-2xl border bg-background shadow-panel",
+        !isSidebarVisible && "ml-2",
+      )}>
+        {/* Middle Column - Settings Navigation */}
+        <div className="w-72 border-r bg-muted/30 flex flex-col flex-shrink-0">
+          {/* Header with toggle button */}
+          <div className="h-14 px-4 py-3 flex-shrink-0">
+            <div className="flex items-center gap-3">
+              {!isSidebarVisible && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setIsSidebarVisible(true)}
+                  className="h-8 w-8 p-0 rounded-lg hover:bg-muted"
+                  aria-label={t('openSidebar')}
+                >
+                  <Menu className="h-4 w-4" />
+                </Button>
+              )}
+              <h1 className="text-xl font-semibold tracking-tight flex items-center gap-2">
+                {t('settings')}
+              </h1>
+            </div>
           </div>
+
+          {/* Settings Navigation - Scrollable */}
+          <ScrollArea className="flex-1">
+            <div className="p-4 space-y-6">
+              {settingsCategories.map((category) => (
+                <div key={category.id}>
+                  <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2 px-2">
+                    {category.title}
+                  </h3>
+                  <div className="space-y-1">
+                    {category.items.map((item) => {
+                      const isActive = currentSettingsId === item.id;
+
+                      return (
+                        <SettingsItem
+                          key={item.id}
+                          icon={item.icon}
+                          title={item.title}
+                          onClick={() => navigate(item.href)}
+                          isActive={isActive}
+                        />
+                      );
+                    })}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </ScrollArea>
         </div>
 
-        {/* Settings Navigation - Scrollable */}
-        <ScrollArea className="flex-1">
-          <div className="p-4 space-y-6">
-            {settingsCategories.map((category) => (
-              <div key={category.id}>
-                <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2 px-2">
-                  {category.title}
-                </h3>
-                <div className="space-y-1">
-                  {category.items.map((item) => {
-                    const isActive = currentSettingsId === item.id;
-
-                    return (
-                      <SettingsItem
-                        key={item.id}
-                        icon={item.icon}
-                        title={item.title}
-                        onClick={() => navigate(item.href)}
-                        isActive={isActive}
-                      />
-                    );
-                  })}
-                </div>
-              </div>
-            ))}
+        {/* Right Column - Settings Content - Scrollable */}
+        <ScrollArea className="flex-1 bg-background">
+          <div className="max-w-4xl">
+            <Outlet />
           </div>
         </ScrollArea>
       </div>
-
-      {/* Right Column - Settings Content - Scrollable */}
-      <ScrollArea className="flex-1 bg-background">
-        <div className="max-w-4xl">
-          <Outlet />
-        </div>
-      </ScrollArea>
     </div>
   );
 }

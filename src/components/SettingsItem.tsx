@@ -20,10 +20,10 @@ export function SettingsItem({
     <button
       onClick={onClick}
       className={cn(
-        'group w-full text-left p-2 rounded-lg transition-all duration-200 border',
+        'group w-full text-left h-9 px-2.5 rounded-lg transition-colors duration-150',
         {
-          'bg-primary/10 border-primary/20 shadow-sm': isActive,
-          'border-transparent hover:bg-muted/60 hover:shadow-sm': !isActive,
+          'bg-primary/10 shadow-sm': isActive,
+          'hover:bg-muted': !isActive,
         },
         className
       )}
@@ -37,8 +37,8 @@ export function SettingsItem({
         </div>
         <div className="flex-1 min-w-0">
           <div className={cn('text-sm font-medium transition-colors duration-200', {
-            'text-primary': isActive,
-            'text-foreground': !isActive,
+            'text-foreground': isActive,
+            'text-foreground/75 group-hover:text-foreground': !isActive,
           })}>
             {title}
           </div>

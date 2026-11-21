@@ -364,7 +364,7 @@ export default function Clone() {
           <div className="text-4xl mb-4">
             <GitBranch className="h-12 w-12 mx-auto text-primary" />
           </div>
-          <h1 className="text-3xl font-bold mb-3 bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
+          <h1 className="text-3xl font-bold mb-3 text-brand w-fit mx-auto">
             {t('importRepository')}
           </h1>
           <p className="text-lg text-muted-foreground">

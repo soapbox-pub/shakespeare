@@ -55,8 +55,8 @@ const ProjectItem: React.FC<ProjectItemProps> = ({
   return (
     <div
       className={cn(
-        "group relative rounded-lg transition-all duration-200 hover:bg-gradient-to-r hover:from-primary/10 hover:to-accent/10",
-        isSelected && "bg-gradient-to-r from-primary/15 to-accent/15 shadow-sm"
+        "group relative rounded-lg transition-colors duration-150 hover:bg-sidebar-accent/60",
+        isSelected && "bg-sidebar-accent text-sidebar-accent-foreground shadow-sm hover:bg-sidebar-accent"
       )}
     >
       <div className="w-full px-3 py-2 text-left text-sidebar-foreground">
@@ -305,17 +305,17 @@ export function ProjectSidebar({
   }
 
   return (
-    <div className={cn("flex flex-col h-full bg-gradient-to-b from-sidebar to-sidebar/95", className)}>
+    <div className={cn("flex flex-col h-full bg-sidebar text-sidebar-foreground", className)}>
       {/* Header with Logo */}
-      <div className="pt-safe bg-gradient-to-r from-primary/10 via-accent/5 to-primary/10">
-        <div className="flex px-4 h-12 border-b border-sidebar-border">
+      <div className="pt-safe">
+        <div className="flex px-4 h-14">
           <div className="flex items-center justify-between w-full">
             <button
               onClick={() => navigateAndClose('/')}
               className="flex items-center gap-3 hover:opacity-80 transition-opacity text-left"
             >
-              <ShakespeareLogo className="w-6 h-6" />
-              <h1 className="text-xl font-semibold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
+              <ShakespeareLogo className="w-7 h-7 drop-shadow-sm" />
+              <h1 className="text-lg font-semibold tracking-tight text-brand">
                 Shakespeare
               </h1>
             </button>
@@ -324,15 +324,15 @@ export function ProjectSidebar({
                 <Button
                   variant="ghost"
                   size="sm"
-                  className="h-8 w-8 p-0 hover:bg-primary/10 -mr-2"
+                  className="h-8 w-8 p-0 rounded-lg hover:bg-sidebar-accent/60 -mr-2"
                   onClick={handleToggleSidebar}
                   aria-label={(onClose && isMobile) ? t('closeSidebar') : t('collapseSidebar')}
                   title={(onClose && isMobile) ? t('closeSidebar') : t('hidePaneButtonTooltip')}
                 >
                   {(onClose && isMobile) ? (
-                    <X className="h-4 w-4 text-primary/60 hover:text-primary" />
+                    <X className="h-4 w-4 text-sidebar-foreground/60 hover:text-sidebar-foreground" />
                   ) : (
-                    <Columns2 className="h-4 w-4 text-primary/60 hover:text-primary" />
+                    <Columns2 className="h-4 w-4 text-sidebar-foreground/60 hover:text-sidebar-foreground" />
                   )}
                 </Button>
               </div>
@@ -342,13 +342,13 @@ export function ProjectSidebar({
       </div>
 
       <div className="flex-1 overflow-y-auto">
-        <div className="p-2">
-          <div className="mb-2 space-y-3">
-            <div className="relative rounded-md bg-gradient-to-r from-primary to-accent hover:from-primary/90 hover:to-accent/90 transition-all duration-200">
+        <div className="px-3 pb-3 pt-1">
+          <div className="mb-3 space-y-3">
+            <div className="relative rounded-lg bg-brand shadow-sm shadow-primary/25 [text-shadow:0_1px_1px_rgb(0_0_0/0.2)] hover:brightness-110 active:brightness-95 transition-[filter] duration-200">
               <div className="flex">
                 <button
                   onClick={handleNewProject}
-                  className="flex-1 flex items-center justify-center px-3 py-2.5 text-sm font-medium text-primary-foreground rounded-l-md hover:bg-white/10 transition-colors"
+                  className="flex-1 flex items-center justify-center px-3 py-2.5 text-sm font-medium text-white rounded-l-lg"
                 >
                   <Plus className="h-4 w-4 mr-2" />
                   {t('newProject')}
@@ -356,7 +356,7 @@ export function ProjectSidebar({
                 <div className="w-px bg-white/20" />
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
-                    <button className="px-3 py-2.5 text-primary-foreground hover:bg-white/10 rounded-r-md transition-colors">
+                    <button className="px-3 py-2.5 text-white hover:bg-white/10 rounded-r-lg transition-colors">
                       <ChevronDown className="h-4 w-4" />
                     </button>
                   </DropdownMenuTrigger>
@@ -389,7 +389,7 @@ export function ProjectSidebar({
                   placeholder={t('searchProjects')}
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-9 h-9 text-sm bg-sidebar-accent/50 border-sidebar-border focus-visible:ring-primary/50"
+                  className="pl-9 h-9 text-sm rounded-lg bg-background/60 border-sidebar-border shadow-sm focus-visible:ring-primary/50 focus-visible:ring-offset-0"
                 />
               </div>
             )}
@@ -513,12 +513,12 @@ export function ProjectSidebar({
       </div>
 
       {/* Settings and Help at Bottom */}
-      <div className="border-t border-sidebar-border bg-gradient-to-r from-primary/5 to-accent/5 mt-auto pb-safe">
-        <div className="p-2 flex items-center gap-2">
+      <div className="mt-auto pb-safe">
+        <div className="px-3 py-2 flex items-center gap-1">
           <Button
             variant="ghost"
             size="sm"
-            className="flex-1 h-9 justify-start gap-2 text-sidebar-foreground dark:hover:text-sidebar-primary hover:bg-primary/10 dark:hover:bg-sidebar-accent/30 transition-all duration-200"
+            className="flex-1 h-9 justify-start gap-2 rounded-lg text-sidebar-foreground/75 hover:text-sidebar-foreground hover:bg-sidebar-accent/60 transition-colors duration-150"
             onClick={() => navigateAndClose('/settings')}
           >
             <Settings className="h-4 w-4 transition-colors duration-200" />
@@ -527,7 +527,7 @@ export function ProjectSidebar({
           <Button
             variant="ghost"
             size="sm"
-            className="h-9 w-9 p-0 text-sidebar-foreground dark:hover:text-sidebar-primary hover:bg-primary/10 dark:hover:bg-sidebar-accent/30 transition-all duration-200"
+            className="h-9 w-9 p-0 rounded-lg text-sidebar-foreground/75 hover:text-sidebar-foreground hover:bg-sidebar-accent/60 transition-colors duration-150"
             onClick={() => window.open('https://soapbox.pub/shakespeare-resources/', '_blank')}
             aria-label={t('help')}
           >

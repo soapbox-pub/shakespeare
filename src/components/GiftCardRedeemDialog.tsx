@@ -261,7 +261,7 @@ export function GiftCardRedeemDialog({ open, onOpenChange, baseURL, code }: Gift
 
             {/* Title and amount */}
             <div>
-              <h2 className="text-3xl font-bold mb-2 bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
+              <h2 className="text-3xl font-bold mb-2 text-brand w-fit mx-auto">
                 {t('youveGotCredits', { amount: giftcard && formatCurrency(giftcard.amount) })}
               </h2>
               <p className="text-muted-foreground">

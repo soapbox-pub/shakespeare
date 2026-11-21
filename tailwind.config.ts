@@ -26,6 +26,11 @@ export default {
         sans: ['Inter Variable', 'Inter', 'system-ui', 'sans-serif'],
       },
       colors: {
+        shell: {
+          DEFAULT: 'hsl(var(--shell))',
+          foreground: 'hsl(var(--shell-foreground))'
+        },
+        magenta: 'hsl(var(--magenta))',
         border: 'hsl(var(--border))',
         input: 'hsl(var(--input))',
         ring: 'hsl(var(--ring))',

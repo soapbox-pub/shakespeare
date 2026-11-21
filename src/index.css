@@ -4,107 +4,135 @@
 
 @layer base {
   :root {
-    /* GitHub-inspired light theme with Shakespeare colors */
+    /* The window behind the panels, which the sidebar sits on. */
+    --shell: 270 60% 96.5%;
+    --shell-foreground: 271 45% 18%;
+
     --background: 0 0% 100%;
-    --foreground: 220 9% 9%;
+    --foreground: 224 12% 10%;
 
     --card: 0 0% 100%;
-    --card-foreground: 220 9% 9%;
+    --card-foreground: 224 12% 10%;
 
     --popover: 0 0% 100%;
-    --popover-foreground: 220 9% 9%;
+    --popover-foreground: 224 12% 10%;
 
-    /* Shakespeare purple as primary */
+    /* Shakespeare purple */
     --primary: 271 81% 56%;
     --primary-foreground: 0 0% 100%;
 
-    /* GitHub-style secondary */
-    --secondary: 220 14% 96%;
-    --secondary-foreground: 220 9% 9%;
+    --secondary: 270 25% 96%;
+    --secondary-foreground: 224 12% 10%;
 
-    --muted: 220 14% 96%;
-    --muted-foreground: 220 9% 46%;
+    --muted: 270 25% 96.5%;
+    --muted-foreground: 225 8% 45%;
 
-    /* Shakespeare gold as accent */
-    --accent: 45 93% 58%;
-    --accent-foreground: 220 9% 9%;
+    /* Shakespeare gold, the other end of the brand gradient */
+    --accent: 42 95% 55%;
+    --accent-foreground: 224 12% 10%;
+
+    /* Between the two, for the brand gradient */
+    --magenta: 292 84% 54%;
 
     --destructive: 0 84% 60%;
     --destructive-foreground: 0 0% 100%;
 
-    /* GitHub-style borders */
-    --border: 220 13% 91%;
-    --input: 220 13% 91%;
+    --border: 268 22% 91%;
+    --input: 268 22% 88%;
     --ring: 271 81% 56%;
 
     --radius: 0.75rem;
 
-    /* Sidebar colors - Enhanced purple theme */
-    --sidebar-background: 271 81% 96%;
-    --sidebar-foreground: 271 81% 15%;
+    --sidebar-background: var(--shell);
+    --sidebar-foreground: var(--shell-foreground);
     --sidebar-primary: 271 81% 56%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 271 81% 92%;
-    --sidebar-accent-foreground: 271 81% 15%;
-    --sidebar-border: 271 81% 85%;
+    --sidebar-accent: 271 70% 91%;
+    --sidebar-accent-foreground: 271 60% 20%;
+    --sidebar-border: 270 35% 88%;
     --sidebar-ring: 271 81% 56%;
 
-    /* GitHub-style success and warning */
     --success: 142 76% 36%;
     --success-foreground: 0 0% 100%;
-    --warning: 45 93% 58%;
-    --warning-foreground: 220 9% 9%;
+    --warning: 42 95% 55%;
+    --warning-foreground: 224 12% 10%;
+
+    --panel-shadow: 0 1px 2px hsl(271 40% 20% / 0.04), 0 8px 24px -8px hsl(271 40% 20% / 0.08);
   }
 
   .dark {
-    /* GitHub-inspired dark theme with Shakespeare colors */
-    --background: 220 13% 9%;
-    --foreground: 220 14% 93%;
+    --shell: 272 45% 6%;
+    --shell-foreground: 271 40% 88%;
 
-    --card: 220 13% 11%;
-    --card-foreground: 220 14% 93%;
+    --background: 262 14% 9%;
+    --foreground: 260 15% 94%;
 
-    --popover: 220 13% 11%;
-    --popover-foreground: 220 14% 93%;
+    --card: 262 13% 11%;
+    --card-foreground: 260 15% 94%;
 
-    /* Shakespeare purple (lighter for dark mode) */
-    --primary: 271 81% 65%;
-    --primary-foreground: 220 13% 9%;
+    --popover: 262 14% 11%;
+    --popover-foreground: 260 15% 94%;
 
-    /* GitHub dark secondary */
-    --secondary: 220 13% 15%;
-    --secondary-foreground: 220 14% 93%;
+    --primary: 271 78% 62%;
+    --primary-foreground: 0 0% 100%;
 
-    --muted: 220 13% 15%;
-    --muted-foreground: 220 9% 63%;
+    --secondary: 262 12% 15%;
+    --secondary-foreground: 260 15% 94%;
 
-    /* Shakespeare gold (adjusted for dark mode) */
-    --accent: 45 93% 65%;
-    --accent-foreground: 220 13% 9%;
+    --muted: 262 12% 14%;
+    --muted-foreground: 260 8% 64%;
 
-    --destructive: 0 84% 60%;
+    --accent: 44 95% 62%;
+    --accent-foreground: 262 14% 9%;
+
+    --magenta: 292 80% 62%;
+
+    --destructive: 0 72% 55%;
     --destructive-foreground: 0 0% 100%;
 
-    /* GitHub dark borders */
-    --border: 220 13% 18%;
-    --input: 220 13% 18%;
-    --ring: 271 81% 65%;
+    --border: 262 12% 17%;
+    --input: 262 12% 21%;
+    --ring: 271 78% 62%;
 
-    /* Sidebar dark colors - Enhanced purple theme */
-    --sidebar-background: 271 81% 8%;
-    --sidebar-foreground: 271 81% 90%;
-    --sidebar-primary: 271 81% 65%;
-    --sidebar-primary-foreground: 271 81% 8%;
-    --sidebar-accent: 271 81% 15%;
-    --sidebar-accent-foreground: 271 81% 90%;
-    --sidebar-border: 271 81% 20%;
-    --sidebar-ring: 271 81% 65%;
+    --sidebar-background: var(--shell);
+    --sidebar-foreground: var(--shell-foreground);
+    --sidebar-primary: 271 78% 62%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 271 45% 15%;
+    --sidebar-accent-foreground: 271 85% 94%;
+    --sidebar-border: 271 35% 14%;
+    --sidebar-ring: 271 78% 62%;
 
-    /* Dark mode success and warning */
     --success: 142 76% 45%;
     --success-foreground: 0 0% 100%;
-    --warning: 45 93% 65%;
-    --warning-foreground: 220 13% 9%;
+    --warning: 44 95% 62%;
+    --warning-foreground: 262 14% 9%;
+
+    --panel-shadow: 0 1px 2px hsl(0 0% 0% / 0.3), 0 12px 32px -12px hsl(0 0% 0% / 0.6);
+  }
+}
+
+/* Shakespeare's purple-to-gold, for words and for surfaces. */
+@layer utilities {
+  .text-brand {
+    background-image: linear-gradient(95deg, hsl(var(--primary)), hsl(var(--magenta)) 45%, hsl(var(--accent)));
+    background-clip: text;
+    -webkit-background-clip: text;
+    color: transparent;
+  }
+
+  .bg-brand {
+    background-image: linear-gradient(95deg, hsl(var(--primary)), hsl(var(--magenta)) 55%, hsl(var(--accent)));
+  }
+
+  .bg-brand-soft {
+    background-image:
+      radial-gradient(120% 140% at 0% 0%, hsl(var(--primary) / 0.16), transparent 60%),
+      radial-gradient(120% 140% at 100% 100%, hsl(var(--accent) / 0.16), transparent 60%);
+  }
+
+  .shadow-panel {
+    box-shadow: var(--panel-shadow);
   }
 }
 
@@ -117,10 +145,16 @@
     background-color: hsl(var(--background));
     color: hsl(var(--foreground));
     font-family: 'Inter Variable', 'Inter', 'system-ui', 'sans-serif';
-    font-feature-settings: "rlig" 1, "calt" 1;
+    font-feature-settings: "rlig" 1, "calt" 1, "cv11" 1, "ss01" 1;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
   }
 
-  /* GitHub-style scrollbars */
+  ::selection {
+    background: hsl(var(--primary) / 0.3);
+  }
+
+  /* Thin, quiet scrollbars */
   ::-webkit-scrollbar {
     width: 8px;
     height: 8px;
@@ -131,7 +165,7 @@
   }
 
   ::-webkit-scrollbar-thumb {
-    background: hsl(var(--border));
+    background: hsl(var(--muted-foreground) / 0.25);
     border-radius: 4px;
   }
 

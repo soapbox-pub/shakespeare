@@ -292,7 +292,7 @@ export default function Index() {
               <div className="mb-6 md:mb-8">
                 <ShakespeareLogo className="w-20 h-20 md:w-24 md:h-24 mx-auto" />
               </div>
-              <h1 className="text-3xl md:text-4xl font-bold mb-3 md:mb-4 bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
+              <h1 className="text-3xl md:text-4xl font-bold tracking-tight mb-3 md:mb-4 text-brand w-fit mx-auto">
                 {t('buildApps')}
               </h1>
             </div>

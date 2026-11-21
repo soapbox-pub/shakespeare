@@ -305,7 +305,7 @@ export function OnboardingDialog({ open, onOpenChange }: OnboardingDialogProps) 
                   <ShakespeareLogo className="w-16 h-16 mx-auto" />
                 </div>
                 <div className="space-y-3">
-                  <h2 className="text-2xl font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
+                  <h2 className="text-2xl font-bold text-brand w-fit mx-auto">
                     {t('welcomeToShakespeareOnboarding')}
                   </h2>
                   <p className="text-lg text-muted-foreground max-w-md mx-auto">
@@ -443,7 +443,7 @@ export function OnboardingDialog({ open, onOpenChange }: OnboardingDialogProps) 
                               fallback={<Bot size={20} />}
                             />
                             <CardTitle className={cn('text-lg font-semibold', {
-                              'bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent': isShakespeare,
+                              'text-brand': isShakespeare,
                             })}>
                               {provider.name}
                             </CardTitle>

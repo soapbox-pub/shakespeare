@@ -92,6 +92,7 @@ export class RemoteSessionManager implements SessionManagerLike {
   private instance: string;
   private pingTimer: ReturnType<typeof setInterval> | undefined;
   private options: RemoteSessionManagerOptions;
+  private askedToNotify = false;
 
   constructor(options: RemoteSessionManagerOptions) {
     this.options = options;
@@ -148,6 +149,7 @@ export class RemoteSessionManager implements SessionManagerLike {
   }
 
   async sendMessage(projectId: string, content: UserMessageContent, providerModel: string): Promise<void> {
+    await this.askToNotify();
     await this.call('sendMessage', [projectId, content, providerModel]);
   }
 
@@ -160,7 +162,24 @@ export class RemoteSessionManager implements SessionManagerLike {
   }
 
   async startGeneration(projectId: string, providerModel: string): Promise<void> {
+    await this.askToNotify();
     await this.call('startGeneration', [projectId, providerModel]);
+  }
+
+  /**
+   * Ask, once, to show notifications, as a turn is handed to the worker. A turn's notification is
+   * what keeps the worker running with the window closed, and where notifications are the site's to
+   * ask for (an nsite in Tenna) the worker's is refused until the user has allowed them. Din grants
+   * its apps notifications from their manifest, so there it reads `granted` and nothing is asked.
+   */
+  private async askToNotify(): Promise<void> {
+    if (this.askedToNotify || typeof Notification === 'undefined' || Notification.permission !== 'default') return;
+    this.askedToNotify = true;
+    try {
+      await Notification.requestPermission();
+    } catch {
+      // Not answered: the turn runs without its notification, as it would have.
+    }
   }
 
   stopGeneration(projectId: string): void {

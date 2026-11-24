@@ -2,6 +2,8 @@ import { type NLoginType, NUser, useNostrLogin } from '@nostrify/react/login';
 import { useNostr } from '@nostrify/react';
 import { useCallback, useMemo } from 'react';
 
+import { Nip07AccountSigner } from '@/lib/nip07';
+
 import { useAuthor } from './useAuthor.ts';
 
 export function useCurrentUser() {
@@ -15,7 +17,8 @@ export function useCurrentUser() {
       case 'bunker': // Nostr login with NIP-46 "bunker://" URI
         return NUser.fromBunkerLogin(login, nostr);
       case 'extension': // Nostr login with NIP-07 browser extension
-        return NUser.fromExtensionLogin(login);
+        // Pinned to the login's account where the signer lets a site hold accounts (Din's getSigner)
+        return new NUser('extension', login.pubkey, new Nip07AccountSigner(login.pubkey));
       // Other login types can be defined here
       default:
         throw new Error(`Unsupported login type: ${login.type}`);

@@ -1,6 +1,7 @@
 import { useNostr } from '@nostrify/react';
 import { NLogin, useNostrLogin } from '@nostrify/react/login';
 import type { NostrConnectParams } from '@nostrify/react/login';
+import { requestNip07PublicKey } from '@/lib/nip07';
 
 // NOTE: This file should not be edited except for adding new login methods.
 
@@ -27,9 +28,10 @@ export function useLoginActions() {
       const login = await NLogin.fromNostrConnect(params, nostr, { signal });
       addLogin(login);
     },
-    // Login with a NIP-07 browser extension
+    // Login with a NIP-07 browser extension. Where it lets a site hold accounts (Din's
+    // requestPublicKey), the user picks the account, so each extension login can be another.
     async extension(): Promise<void> {
-      const login = await NLogin.fromExtension();
+      const login = new NLogin('extension', await requestNip07PublicKey(), null);
       addLogin(login);
     },
     // Log out the current user

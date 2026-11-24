@@ -18,6 +18,7 @@ import { Git } from '@/lib/git';
 import { getAllSkills } from '@/lib/skills';
 import { SessionManager, SESSION_EVENTS, snapshotSession, type AIMessage, type UserMessageContent } from '@/lib/SessionManager';
 import { buildProject } from '@/lib/build';
+import { Nip07AccountSigner } from '@/lib/nip07';
 import { createWorkerTools } from '@/lib/tools/workerTools';
 import type { Tool } from '@/lib/tools/Tool';
 import {
@@ -112,61 +113,13 @@ class PageSigner implements NostrSigner {
   }
 }
 
-/**
- * Din gives its apps' workers `self.nostr`, the same NIP-07 signer as the page's `window.nostr`
- * (Din's docs/din/background.md). Its calls reject while the app may not use it.
- */
-const workerNostr = (self as unknown as { nostr?: NostrSigner }).nostr;
-
-/**
- * Signs with the worker's own NIP-07 signer where it has one for this account, so signing goes on
- * with every window closed; otherwise with a page's.
- */
-class ExtensionSigner implements NostrSigner {
-  private readonly page: PageSigner;
-  /** Whether `workerNostr` signs for this account, once it has said so. */
-  private own = false;
-
-  constructor(private pubkey: string) {
-    this.page = new PageSigner(pubkey);
-  }
-
-  private async signer(): Promise<NostrSigner> {
-    if (!workerNostr) return this.page;
-    if (!this.own) {
-      // Asked again until it says yes: it may only be granted later.
-      this.own = await workerNostr.getPublicKey().then((pubkey) => pubkey === this.pubkey, () => false);
-    }
-    return this.own ? workerNostr : this.page;
-  }
-
-  getPublicKey(): Promise<string> {
-    return Promise.resolve(this.pubkey);
-  }
-
-  async signEvent(event: Omit<NostrEvent, 'id' | 'pubkey' | 'sig'>): Promise<NostrEvent> {
-    return (await this.signer()).signEvent(event);
-  }
-
-  readonly nip04 = {
-    encrypt: async (pubkey: string, plaintext: string) => (await this.cipher('nip04')).encrypt(pubkey, plaintext),
-    decrypt: async (pubkey: string, ciphertext: string) => (await this.cipher('nip04')).decrypt(pubkey, ciphertext),
-  };
-
-  readonly nip44 = {
-    encrypt: async (pubkey: string, plaintext: string) => (await this.cipher('nip44')).encrypt(pubkey, plaintext),
-    decrypt: async (pubkey: string, ciphertext: string) => (await this.cipher('nip44')).decrypt(pubkey, ciphertext),
-  };
-
-  private async cipher(version: 'nip04' | 'nip44') {
-    const signer = await this.signer();
-    return signer[version] ?? this.page[version];
-  }
-}
-
 let cachedUser: { key: string; user: NUser } | undefined;
 
-/** The signed-in user. nsec and bunker logins sign here; others with Din's worker signer, or in a page. */
+/**
+ * The signed-in user. nsec and bunker logins sign here. NIP-07 logins sign with the worker's own
+ * `self.nostr` (Din gives workers one): pinned to the login's account where it has `getSigner`, or while
+ * it's on that account; otherwise a page signs.
+ */
 function currentUser(): NUser | undefined {
   const login = context?.login;
   if (!login) return undefined;
@@ -177,10 +130,10 @@ function currentUser(): NUser | undefined {
   try {
     if (login.type === 'nsec') user = NUser.fromNsecLogin(login as unknown as Extract<NLoginType, { type: 'nsec' }>);
     else if (login.type === 'bunker') user = NUser.fromBunkerLogin(login as unknown as Extract<NLoginType, { type: 'bunker' }>, pool);
-    else user = new NUser(login.type as NUser['method'], login.pubkey, new ExtensionSigner(login.pubkey));
+    else user = new NUser(login.type as NUser['method'], login.pubkey, new Nip07AccountSigner(login.pubkey, new PageSigner(login.pubkey)));
   } catch (error) {
     console.warn('Failed to load the login, signing elsewhere instead:', error);
-    user = new NUser(login.type as NUser['method'], login.pubkey, new ExtensionSigner(login.pubkey));
+    user = new NUser(login.type as NUser['method'], login.pubkey, new Nip07AccountSigner(login.pubkey, new PageSigner(login.pubkey)));
   }
   cachedUser = { key, user };
   return user;

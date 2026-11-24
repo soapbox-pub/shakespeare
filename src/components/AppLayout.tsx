@@ -74,7 +74,7 @@ export function AppLayout({
       <div className="min-h-dvh bg-background">
         {/* Mobile Header */}
         <header className="sticky top-0 z-40 bg-background/80 backdrop-blur pt-safe">
-          <div className="h-12 px-4 py-3 flex items-center justify-between border-b">
+          <div className="h-12 px-4 py-3 flex items-center justify-between">
             <div className="flex items-center space-x-2">
               {showSidebar && (
                 <Button

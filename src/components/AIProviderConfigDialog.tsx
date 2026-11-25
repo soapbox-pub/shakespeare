@@ -1,7 +1,7 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import QRCode from 'qrcode';
-import { Trash2, Bot, CreditCard, Zap, ExternalLink, RefreshCw, Check, X, Clock, AlertCircle, Copy, RotateCcw, ArrowLeft, Gift, Plus, History, DollarSign, Printer, Download } from 'lucide-react';
+import { Trash2, Bot, CreditCard, Zap, Bitcoin, ExternalLink, RefreshCw, Check, X, Clock, AlertCircle, Copy, RotateCcw, ArrowLeft, Gift, Plus, History, DollarSign, Printer, Download, Hourglass } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -31,7 +31,18 @@ import type { AIProvider } from '@/contexts/AISettingsContext';
 import { ExternalFavicon } from '@/components/ExternalFavicon';
 import { useToast } from '@/hooks/useToast';
 import { useAICredits } from '@/hooks/useAICredits';
+import { useAIPaymentMethods } from '@/hooks/useAIPaymentMethods';
+import { CreditsPayment } from '@/components/CreditsPayment';
 import { createAIClient } from '@/lib/ai-client';
+import {
+  availableMethods,
+  feeFor,
+  isConfirming,
+  isWorthListing,
+  type Payment,
+  type PaymentMethodId,
+  type PaymentsResponse,
+} from '@/lib/aiPayments';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
 import { useAppContext } from '@/hooks/useAppContext';
 
@@ -41,34 +52,6 @@ interface AIProviderConfigDialogProps {
   provider: AIProvider;
   onUpdate: (provider: AIProvider) => void;
   onRemove: () => void;
-}
-
-interface Payment {
-  object: 'payment';
-  id: string;
-  status: 'pending' | 'completed' | 'failed' | 'expired';
-  amount: number;
-  fee: number;
-  total: number;
-  method: 'stripe' | 'lightning';
-  description: string;
-  url: string;
-  created_at: number;
-  completed_at?: number;
-  expires_at: number;
-}
-
-interface PaymentsResponse {
-  object: 'list';
-  data: Payment[];
-  has_more: boolean;
-  url: string;
-}
-
-interface AddCreditsRequest {
-  amount: number;
-  method: 'stripe' | 'lightning';
-  redirect_url?: string;
 }
 
 interface Giftcard {
@@ -100,237 +83,13 @@ interface GiftcardRedemption {
   amount: number;
 }
 
-const PRESET_AMOUNTS = [5, 10, 25, 50, 100];
-
-interface LightningPaymentProps {
-  invoice: string;
+interface AddCreditsRequest {
   amount: number;
-  paymentId: string;
-  provider: AIProvider;
-  onClose: () => void;
-  onPaymentCompleted: () => void;
+  method: PaymentMethodId;
+  redirect_url?: string;
 }
 
-function LightningPayment({ invoice, amount, paymentId, provider, onClose, onPaymentCompleted }: LightningPaymentProps) {
-  const { t } = useTranslation();
-  const { user } = useCurrentUser();
-  const { config } = useAppContext();
-  const queryClient = useQueryClient();
-  const [qrDataUrl, setQrDataUrl] = useState<string>('');
-  const [isWebLNAvailable, setIsWebLNAvailable] = useState(false);
-  const [isPayingWithWebLN, setIsPayingWithWebLN] = useState(false);
-  const [showCopiedTooltip, setShowCopiedTooltip] = useState(false);
-  const [paymentCompleted, setPaymentCompleted] = useState(false);
-  const { toast } = useToast();
-
-  const formatCurrency = useCallback((amount: number) => {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD',
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2,
-    }).format(amount);
-  }, []);
-
-  useEffect(() => {
-    // Generate QR code
-    QRCode.toDataURL(invoice, {
-      width: 256,
-      margin: 2,
-      color: {
-        dark: '#000000',
-        light: '#ffffff',
-      },
-    })
-      .then(setQrDataUrl)
-      .catch(console.error);
-
-    // Check for WebLN availability
-    setIsWebLNAvailable(typeof window !== 'undefined' && 'webln' in window);
-  }, [invoice]);
-
-  // Poll payment status
-  useEffect(() => {
-    // Don't poll if payment already completed
-    if (paymentCompleted) return;
-
-    let intervalId: NodeJS.Timeout | null = null;
-
-    const pollPaymentStatus = async () => {
-      // Double-check in case state updated during async operation
-      if (paymentCompleted) return;
-
-      try {
-        const ai = createAIClient(provider, user, config.corsProxy);
-        const payment = await ai.get(`/credits/payments/${paymentId}`) as Payment;
-
-        if (payment.status === 'completed') {
-          // Mark as completed to prevent further polling
-          setPaymentCompleted(true);
-
-          // Clear the interval immediately
-          if (intervalId) {
-            clearInterval(intervalId);
-            intervalId = null;
-          }
-
-          // Update credits balance
-          queryClient.invalidateQueries({
-            queryKey: ['ai-credits', provider.nostr ? user?.pubkey ?? '' : '', provider.id],
-          });
-
-          // Update payments list
-          queryClient.invalidateQueries({
-            queryKey: ['ai-payments', provider.nostr ? user?.pubkey ?? '' : '', provider.id],
-          });
-
-          // Show toast
-          toast({
-            title: t('paymentCompleted'),
-            description: t('creditsAddedToAccount', { amount: formatCurrency(payment.amount) }),
-          });
-
-          // Close dialog immediately
-          onPaymentCompleted();
-        } else if (payment.status === 'failed') {
-          // Mark as completed to prevent further polling
-          setPaymentCompleted(true);
-
-          // Clear the interval immediately
-          if (intervalId) {
-            clearInterval(intervalId);
-            intervalId = null;
-          }
-
-          toast({
-            title: t('paymentFailed'),
-            description: t('paymentFailed'),
-            variant: 'destructive',
-          });
-        } else if (payment.status === 'expired') {
-          // Mark as completed to prevent further polling
-          setPaymentCompleted(true);
-
-          // Clear the interval immediately
-          if (intervalId) {
-            clearInterval(intervalId);
-            intervalId = null;
-          }
-
-          toast({
-            title: t('paymentExpired'),
-            description: t('paymentExpiredMessage'),
-            variant: 'destructive',
-          });
-        }
-      } catch (error) {
-        console.error('Failed to poll payment status:', error);
-      }
-    };
-
-    // Poll immediately on mount
-    pollPaymentStatus();
-
-    // Then poll every 3 seconds
-    intervalId = setInterval(pollPaymentStatus, 3000);
-
-    return () => {
-      if (intervalId) {
-        clearInterval(intervalId);
-      }
-    };
-  }, [paymentId, provider, user, config.corsProxy, queryClient, toast, t, onPaymentCompleted, formatCurrency, paymentCompleted]);
-
-  const handleWebLNPay = async () => {
-    if (!window.webln) return;
-
-    try {
-      setIsPayingWithWebLN(true);
-      await window.webln.enable();
-      await window.webln.sendPayment(invoice);
-
-      toast({
-        title: t('paymentSent'),
-        description: t('lightningPaymentSent'),
-      });
-
-      onClose();
-    } catch (error) {
-      console.error('WebLN payment failed:', error);
-      toast({
-        title: t('paymentFailed'),
-        description: error instanceof Error ? error.message : t('failedToSendLightning'),
-        variant: 'destructive',
-      });
-    } finally {
-      setIsPayingWithWebLN(false);
-    }
-  };
-
-  const handleCopyInvoice = () => {
-    navigator.clipboard.writeText(invoice);
-    setShowCopiedTooltip(true);
-    setTimeout(() => setShowCopiedTooltip(false), 2000);
-  };
-
-  return (
-    <div className="space-y-4">
-      <div className="text-center">
-        <h3 className="text-lg font-semibold mb-2">{t('lightningPayment')}</h3>
-        <p className="text-sm text-muted-foreground">
-          {t('payWithLightning', { amount: formatCurrency(amount) })}
-        </p>
-      </div>
-
-      {/* QR Code */}
-      <div className="flex justify-center">
-        {qrDataUrl ? (
-          <div className="p-4 bg-white rounded-lg border">
-            <img src={qrDataUrl} alt="Lightning Invoice QR Code" className="w-48 h-48" />
-          </div>
-        ) : (
-          <div className="w-48 h-48 bg-muted rounded-lg flex items-center justify-center">
-            <RefreshCw className="h-6 w-6 animate-spin" />
-          </div>
-        )}
-      </div>
-
-      {/* Payment Buttons */}
-      <div className="space-y-2">
-        {isWebLNAvailable && (
-          <Button
-            onClick={handleWebLNPay}
-            disabled={isPayingWithWebLN}
-            className="w-full"
-            size="lg"
-          >
-            {isPayingWithWebLN && <RefreshCw className="h-4 w-4 mr-2 animate-spin" />}
-            <Zap className="h-4 w-4 mr-2" />
-            {t('payWithWebLN')}
-          </Button>
-        )}
-
-        <div className="relative">
-          <Button
-            variant="outline"
-            onClick={handleCopyInvoice}
-            className="w-full"
-            size="lg"
-          >
-            <Copy className="h-4 w-4 mr-2" />
-            {t('copyInvoice')}
-          </Button>
-          {showCopiedTooltip && (
-            <div className="absolute -top-10 left-1/2 transform -translate-x-1/2 bg-foreground text-background text-xs px-2 py-1 rounded shadow-lg z-10 animate-in fade-in-0 duration-200">
-              {t('copied')}
-              <div className="absolute top-full left-1/2 transform -translate-x-1/2 w-0 h-0 border-l-4 border-r-4 border-t-4 border-transparent border-t-foreground"></div>
-            </div>
-          )}
-        </div>
-      </div>
-    </div>
-  );
-}
+const PRESET_AMOUNTS = [5, 10, 25, 50, 100];
 
 export function AIProviderConfigDialog({
   open,
@@ -352,13 +111,10 @@ export function AIProviderConfigDialog({
 
   // Credits state
   const [amount, setAmount] = useState<number>(10);
-  const [debouncedAmount, setDebouncedAmount] = useState<number>(10);
-  const [paymentMethod, setPaymentMethod] = useState<'stripe' | 'lightning'>('stripe');
-  const [lightningInvoice, setLightningInvoice] = useState<string | null>(null);
-  const [lightningPaymentId, setLightningPaymentId] = useState<string | null>(null);
-  const [lightningTotal, setLightningTotal] = useState<number>(10);
+  const [chosenMethod, setChosenMethod] = useState<PaymentMethodId | null>(null);
+  // The Lightning or bitcoin payment being paid, shown in place of the tabs.
+  const [activePayment, setActivePayment] = useState<Payment | null>(null);
   const [refreshingPayments, setRefreshingPayments] = useState<Set<string>>(new Set());
-  const amountDebounceTimer = useRef<NodeJS.Timeout | null>(null);
   const [giftcardAmount, setGiftcardAmount] = useState<number>(10);
   const [giftcardQuantity, setGiftcardQuantity] = useState<number>(1);
   const [redeemCode, setRedeemCode] = useState<string>('');
@@ -386,59 +142,31 @@ export function AIProviderConfigDialog({
     }
   }, [open, supportsCredits, isLoadingCredits]);
 
-  // Debounce amount changes to avoid excessive API calls
-  useEffect(() => {
-    if (amountDebounceTimer.current) {
-      clearTimeout(amountDebounceTimer.current);
-    }
-
-    amountDebounceTimer.current = setTimeout(() => {
-      setDebouncedAmount(amount);
-    }, 500); // Wait 500ms after user stops typing
-
-    return () => {
-      if (amountDebounceTimer.current) {
-        clearTimeout(amountDebounceTimer.current);
-      }
-    };
-  }, [amount]);
-
-  // Query for payment preview (to get fee information)
-  const { data: paymentPreview, isLoading: isLoadingPreview } = useQuery({
-    queryKey: ['ai-payment-preview', provider.nostr ? user?.pubkey ?? '' : '', provider.id, debouncedAmount, paymentMethod],
-    queryFn: async (): Promise<Payment> => {
-      const ai = createAIClient(provider, user, config.corsProxy);
-      const request: AddCreditsRequest = {
-        amount: debouncedAmount,
-        method: paymentMethod,
-      };
-
-      if (paymentMethod === 'stripe') {
-        request.redirect_url = window.location.origin + '/settings/ai';
-      }
-
-      return await ai.post('/credits/add', {
-        body: request,
-      }) as Payment;
-    },
-    enabled: open && supportsCredits && debouncedAmount > 0,
-    retry: false,
-    refetchOnWindowFocus: false,
-    staleTime: Infinity,
-    gcTime: 1000 * 60 * 10,
-  });
+  // What the provider takes, and on what terms. Fees are worked out from
+  // these, rather than by starting a payment to see what it costs.
+  const { data: paymentMethods, isLoading: isLoadingMethods, error: methodsError, refetch: refetchMethods } = useAIPaymentMethods(provider, open && supportsCredits);
+  const methods = availableMethods(paymentMethods);
+  const paymentMethod: PaymentMethodId | undefined = chosenMethod && methods.includes(chosenMethod) ? chosenMethod : methods[0];
+  const minimumAmount = paymentMethods?.minimum_amount ?? 0;
+  const fee = paymentMethods ? feeFor(amount, paymentMethods.fee) : 0;
+  const total = amount + fee;
+  const belowMinimum = amount > 0 && amount < minimumAmount;
 
   // Query for payment history
   const { data: payments, isLoading: isLoadingPayments } = useQuery({
     queryKey: ['ai-payments', provider.nostr ? user?.pubkey ?? '' : '', provider.id],
     queryFn: async (): Promise<Payment[]> => {
       const ai = createAIClient(provider, user, config.corsProxy);
-      const data = await ai.get('/credits/payments?status=completed&limit=50') as PaymentsResponse;
-      return data.data;
+      // Open payments and bitcoin that's still confirming matter as much as
+      // paid ones; ones that expired unpaid don't.
+      const data = await ai.get('/credits/payments?limit=50') as PaymentsResponse;
+      return data.data.filter(isWorthListing);
     },
     enabled: open && supportsCredits,
     retry: false,
     refetchOnWindowFocus: false,
+    // Bitcoin on its way is credited once it confirms, so look again now and then.
+    refetchInterval: (query) => (query.state.data?.some(isConfirming) ? 30_000 : false),
   });
 
   // Query for gift cards
@@ -469,10 +197,8 @@ export function AIProviderConfigDialog({
           title: t('paymentInitiated'),
           description: t('stripeCheckoutOpened'),
         });
-      } else if (payment.method === 'lightning') {
-        setLightningInvoice(payment.url);
-        setLightningPaymentId(payment.id);
-        setLightningTotal(payment.total);
+      } else {
+        setActivePayment(payment);
       }
 
       queryClient.invalidateQueries({
@@ -533,7 +259,7 @@ export function AIProviderConfigDialog({
           description: t('paymentFailed'),
           variant: 'destructive',
         });
-      } else if (updatedPayment.status === 'expired') {
+      } else if (updatedPayment.status === 'expired' && !isConfirming(updatedPayment)) {
         toast({
           title: t('paymentExpired'),
           description: t('paymentExpiredMessage'),
@@ -623,6 +349,8 @@ export function AIProviderConfigDialog({
     },
   });
 
+  const handlePaymentCompleted = useCallback(() => setActivePayment(null), []);
+
   const handleSave = () => {
     onUpdate(localProvider);
     onOpenChange(false);
@@ -643,42 +371,27 @@ export function AIProviderConfigDialog({
       return;
     }
 
-    if (paymentPreview) {
-      if (paymentPreview.method === 'stripe') {
-        window.open(paymentPreview.url, '_blank');
-        toast({
-          title: t('paymentInitiated'),
-          description: t('stripeCheckoutOpened'),
-        });
-      } else if (paymentPreview.method === 'lightning') {
-        setLightningInvoice(paymentPreview.url);
-        setLightningPaymentId(paymentPreview.id);
-        setLightningTotal(paymentPreview.total);
-      }
+    if (!paymentMethod) return;
 
-      queryClient.invalidateQueries({
-        queryKey: ['ai-payments', provider.nostr ? user?.pubkey ?? '' : '', provider.id],
+    if (belowMinimum) {
+      toast({
+        title: t('invalidAmount'),
+        description: t('minimumCreditAmount', { amount: formatCurrency(minimumAmount) }),
+        variant: 'destructive',
       });
-
-      queryClient.invalidateQueries({
-        queryKey: ['ai-credits', provider.nostr ? user?.pubkey ?? '' : '', provider.id],
-      });
-
-      queryClient.invalidateQueries({
-        queryKey: ['ai-payment-preview', provider.nostr ? user?.pubkey ?? '' : '', provider.id, amount, paymentMethod],
-      });
-    } else {
-      const request: AddCreditsRequest = {
-        amount,
-        method: paymentMethod,
-      };
-
-      if (paymentMethod === 'stripe') {
-        request.redirect_url = window.location.origin + '/settings/ai';
-      }
-
-      addCreditsMutation.mutate(request);
+      return;
     }
+
+    const request: AddCreditsRequest = {
+      amount,
+      method: paymentMethod,
+    };
+
+    if (paymentMethod === 'stripe') {
+      request.redirect_url = window.location.origin + '/settings/ai';
+    }
+
+    addCreditsMutation.mutate(request);
   };
 
   const handleCreateGiftcard = () => {
@@ -997,8 +710,11 @@ export function AIProviderConfigDialog({
     }
   };
 
-  const getStatusIcon = (status: Payment['status']) => {
-    switch (status) {
+  const getStatusIcon = (payment: Payment) => {
+    if (isConfirming(payment)) {
+      return <Hourglass className="h-4 w-4 text-yellow-600" />;
+    }
+    switch (payment.status) {
       case 'completed':
         return <Check className="h-4 w-4 text-green-600" />;
       case 'failed':
@@ -1008,6 +724,28 @@ export function AIProviderConfigDialog({
       case 'pending':
       default:
         return <Clock className="h-4 w-4 text-yellow-600" />;
+    }
+  };
+
+  const getMethodLabel = (method: PaymentMethodId) => {
+    switch (method) {
+      case 'stripe':
+        return t('creditCard');
+      case 'lightning':
+        return t('lightning');
+      case 'bitcoin':
+        return t('bitcoin');
+    }
+  };
+
+  const getMethodIcon = (method: PaymentMethodId) => {
+    switch (method) {
+      case 'stripe':
+        return <CreditCard className="h-4 w-4" />;
+      case 'lightning':
+        return <Zap className="h-4 w-4" />;
+      case 'bitcoin':
+        return <Bitcoin className="h-4 w-4" />;
     }
   };
 
@@ -1128,6 +866,12 @@ export function AIProviderConfigDialog({
           <div className="text-center py-6 pb-7">
             <div className="text-sm text-muted-foreground mb-2">{t('availableCredits')}</div>
             <div className="text-3xl font-bold">{formatCurrency(credits.amount)}</div>
+            {!!credits.pending && credits.pending > 0 && (
+              <div className="text-sm text-muted-foreground mt-2 flex items-center justify-center gap-1">
+                <Hourglass className="h-3.5 w-3.5" aria-hidden />
+                {t('creditsOnTheWay', { amount: formatCurrency(credits.pending) })}
+              </div>
+            )}
           </div>
         )}
 
@@ -1171,54 +915,77 @@ export function AIProviderConfigDialog({
                     </div>
                   </div>
 
-                  <div className="space-y-3">
-                    <Label className="text-sm font-medium">{t('paymentMethod')}</Label>
-                    <Tabs value={paymentMethod} onValueChange={(value) => setPaymentMethod(value as 'stripe' | 'lightning')} className="w-full">
-                      <TabsList className="grid w-full grid-cols-2">
-                        <TabsTrigger value="stripe" className="flex items-center gap-2">
-                          <CreditCard className="h-4 w-4" />
-                          {t('creditCard')}
-                        </TabsTrigger>
-                        <TabsTrigger value="lightning" className="flex items-center gap-2">
-                          <Zap className="h-4 w-4" />
-                          {t('lightning')}
-                        </TabsTrigger>
-                      </TabsList>
-                    </Tabs>
-                  </div>
-
-                  {paymentPreview && paymentPreview.fee > 0 && (
-                    <div className="space-y-1 text-sm">
-                      <div className="flex justify-between text-muted-foreground">
-                        <span>{t('credits')}</span>
-                        <span>{formatCurrency(paymentPreview.amount)}</span>
-                      </div>
-                      <div className="flex justify-between text-muted-foreground">
-                        <span>{t('processingFee')}</span>
-                        <span>{formatCurrency(paymentPreview.fee)}</span>
-                      </div>
-                      <div className="flex justify-between font-medium pt-1 border-t">
-                        <span>{t('total')}</span>
-                        <span>{formatCurrency(paymentPreview.total)}</span>
-                      </div>
+                  {isLoadingMethods ? (
+                    <div className="space-y-3">
+                      <Skeleton className="h-4 w-28" />
+                      <Skeleton className="h-10 w-full" />
+                      <Skeleton className="h-12 w-full" />
                     </div>
-                  )}
+                  ) : methodsError ? (
+                    <div className="py-4 text-center space-y-3">
+                      <p className="text-sm text-muted-foreground">{t('paymentMethodsUnavailable')}</p>
+                      <Button variant="outline" size="sm" onClick={() => refetchMethods()}>
+                        <RotateCcw className="h-4 w-4 mr-2" />
+                        {t('retry')}
+                      </Button>
+                    </div>
+                  ) : !paymentMethod ? (
+                    <p className="py-4 text-center text-sm text-muted-foreground">{t('noPaymentMethods')}</p>
+                  ) : (
+                    <>
+                      {methods.length > 1 && (
+                        <div className="space-y-3">
+                          <Label className="text-sm font-medium">{t('paymentMethod')}</Label>
+                          <Tabs value={paymentMethod} onValueChange={(value) => setChosenMethod(value as PaymentMethodId)} className="w-full">
+                            <TabsList className="grid w-full" style={{ gridTemplateColumns: `repeat(${methods.length}, minmax(0, 1fr))` }}>
+                              {methods.map((method) => (
+                                <TabsTrigger key={method} value={method} className="flex items-center gap-2">
+                                  {getMethodIcon(method)}
+                                  {getMethodLabel(method)}
+                                </TabsTrigger>
+                              ))}
+                            </TabsList>
+                          </Tabs>
+                        </div>
+                      )}
 
-                  <Button
-                    onClick={handleAddCredits}
-                    disabled={amount <= 0 || addCreditsMutation.isPending || isLoadingPreview}
-                    className="w-full h-12 text-base font-medium"
-                    size="lg"
-                  >
-                    {(addCreditsMutation.isPending || isLoadingPreview) && <RefreshCw className="h-4 w-4 mr-2 animate-spin" />}
-                    {paymentMethod === 'stripe' ? t('payWithCard') : t('generateInvoice')}
-                    {paymentPreview && paymentPreview.fee > 0
-                      ? ` - ${formatCurrency(paymentPreview.total)}`
-                      : amount > 0
-                        ? ` - ${formatCurrency(amount)}`
-                        : ''
-                    }
-                  </Button>
+                      {belowMinimum && (
+                        <p className="text-sm text-destructive">{t('minimumCreditAmount', { amount: formatCurrency(minimumAmount) })}</p>
+                      )}
+
+                      {fee > 0 && amount > 0 && (
+                        <div className="space-y-1 text-sm">
+                          <div className="flex justify-between text-muted-foreground">
+                            <span>{t('credits')}</span>
+                            <span>{formatCurrency(amount)}</span>
+                          </div>
+                          <div className="flex justify-between text-muted-foreground">
+                            <span>{t('processingFee')}</span>
+                            <span>{formatCurrency(fee)}</span>
+                          </div>
+                          <div className="flex justify-between font-medium pt-1 border-t">
+                            <span>{t('total')}</span>
+                            <span>{formatCurrency(total)}</span>
+                          </div>
+                        </div>
+                      )}
+
+                      <Button
+                        onClick={handleAddCredits}
+                        disabled={amount <= 0 || belowMinimum || addCreditsMutation.isPending}
+                        className="w-full h-12 text-base font-medium"
+                        size="lg"
+                      >
+                        {addCreditsMutation.isPending && <RefreshCw className="h-4 w-4 mr-2 animate-spin" />}
+                        {paymentMethod === 'stripe'
+                          ? t('payWithCard')
+                          : paymentMethod === 'bitcoin'
+                            ? t('getBitcoinAddress')
+                            : t('generateInvoice')}
+                        {amount > 0 && ` - ${formatCurrency(total)}`}
+                      </Button>
+                    </>
+                  )}
                 </div>
               </AccordionContent>
             </AccordionItem>
@@ -1257,10 +1024,15 @@ export function AIProviderConfigDialog({
                         >
                           <div className="flex items-center justify-between">
                             <div className="flex items-center gap-2 min-w-0 flex-1">
-                              {getStatusIcon(payment.status)}
+                              {getStatusIcon(payment)}
                               <span className="text-sm font-medium truncate">
-                                {payment.method === 'stripe' ? t('creditCard') : t('lightning')}
+                                {getMethodLabel(payment.method)}
                               </span>
+                              {isConfirming(payment) && (
+                                <Badge variant="secondary" className="text-xs flex-shrink-0">
+                                  {t('confirming')}
+                                </Badge>
+                              )}
                             </div>
                             <div className="text-right flex-shrink-0">
                               <p className="text-sm font-medium">{formatCurrency(payment.amount)}</p>
@@ -1274,7 +1046,7 @@ export function AIProviderConfigDialog({
 
                           <div className="flex items-center justify-between text-xs text-muted-foreground">
                             <span>{formatDate(payment.created_at)}</span>
-                            {payment.status === 'pending' && (
+                            {(payment.status === 'pending' || isConfirming(payment)) && (
                               <div className="flex items-center gap-1">
                                 <Button
                                   variant="ghost"
@@ -1291,18 +1063,16 @@ export function AIProviderConfigDialog({
                                     variant="ghost"
                                     size="sm"
                                     onClick={() => {
-                                      if (payment.method === 'lightning') {
-                                        setLightningInvoice(payment.url);
-                                        setLightningPaymentId(payment.id);
-                                        setLightningTotal(payment.total);
-                                      } else {
+                                      if (payment.method === 'stripe') {
                                         window.open(payment.url, '_blank');
+                                      } else {
+                                        setActivePayment(payment);
                                       }
                                     }}
                                     className="h-6 px-2 text-xs"
                                   >
                                     <ExternalLink className="h-3 w-3 mr-1" />
-                                    {t('pay')}
+                                    {isConfirming(payment) ? t('details') : t('pay')}
                                   </Button>
                                 )}
                               </div>
@@ -1555,11 +1325,11 @@ export function AIProviderConfigDialog({
 
         {supportsCredits ? (
           <>
-            {lightningInvoice ? (
+            {activePayment ? (
               <div className="flex-1 flex flex-col overflow-hidden">
                 <div className="flex items-center gap-2 pb-4 flex-shrink-0">
                   <button
-                    onClick={() => setLightningInvoice(null)}
+                    onClick={() => setActivePayment(null)}
                     className="flex items-center gap-2 hover:opacity-70 transition-opacity"
                   >
                     <ArrowLeft className="h-5 w-5" />
@@ -1567,19 +1337,11 @@ export function AIProviderConfigDialog({
                   </button>
                 </div>
                 <div className="flex-1 overflow-y-auto px-1 -mx-1">
-                  <LightningPayment
-                    invoice={lightningInvoice}
-                    amount={lightningTotal}
-                    paymentId={lightningPaymentId!}
+                  <CreditsPayment
+                    key={activePayment.id}
+                    payment={activePayment}
                     provider={provider}
-                    onClose={() => {
-                      setLightningInvoice(null);
-                      setLightningPaymentId(null);
-                    }}
-                    onPaymentCompleted={() => {
-                      setLightningInvoice(null);
-                      setLightningPaymentId(null);
-                    }}
+                    onPaymentCompleted={handlePaymentCompleted}
                   />
                 </div>
               </div>

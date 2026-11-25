@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { findCredentialsForRepo } from './gitCredentials';
+import { extractUrlCredentials, findCredentialsForRepo, stripUrlCredentials } from './gitCredentials';
 import type { GitCredential } from '@/contexts/GitSettingsContext';
 
 // Helper to create test credentials with required fields
@@ -281,6 +281,49 @@ describe('gitCredentials', () => {
       ];
       const result = findCredentialsForRepo('http://localhost:3000/repo.git', credentials);
       expect(result).toBe(credentials[0]);
+    });
+  });
+});
+
+describe('stripUrlCredentials', () => {
+  it('removes a username and token', () => {
+    expect(stripUrlCredentials('https://alice:ghp_secret@github.com/alice/repo.git'))
+      .toBe('https://github.com/alice/repo.git');
+  });
+
+  it('removes a bare token in the username', () => {
+    expect(stripUrlCredentials('https://ghp_secret@github.com/alice/repo.git'))
+      .toBe('https://github.com/alice/repo.git');
+  });
+
+  it('leaves URLs without credentials untouched', () => {
+    expect(stripUrlCredentials('https://github.com/alice/repo')).toBe('https://github.com/alice/repo');
+    expect(stripUrlCredentials('nostr://npub1abc/relay.example/repo')).toBe('nostr://npub1abc/relay.example/repo');
+  });
+
+  it('strips userinfo from strings that fail to parse', () => {
+    expect(stripUrlCredentials('https://alice:secret@exa mple.com/repo')).toBe('https://exa mple.com/repo');
+  });
+});
+
+describe('extractUrlCredentials', () => {
+  it('splits a URL into a clean URL and a credential', () => {
+    expect(extractUrlCredentials('https://alice:ghp%2Fsecret@github.com/alice/repo.git')).toEqual({
+      url: 'https://github.com/alice/repo.git',
+      credential: { origin: 'https://github.com', username: 'alice', password: 'ghp/secret' },
+    });
+  });
+
+  it('keeps a bare token as the username', () => {
+    expect(extractUrlCredentials('https://ghp_secret@github.com/alice/repo.git')).toEqual({
+      url: 'https://github.com/alice/repo.git',
+      credential: { origin: 'https://github.com', username: 'ghp_secret', password: '' },
+    });
+  });
+
+  it('returns no credential when there is none', () => {
+    expect(extractUrlCredentials('https://github.com/alice/repo.git')).toEqual({
+      url: 'https://github.com/alice/repo.git',
     });
   });
 });

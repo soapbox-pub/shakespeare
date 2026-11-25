@@ -73,3 +73,50 @@ export function findCredentialsForRepo(
 
   return withUsername ?? matches[0];
 }
+
+/**
+ * Remove any username and password from a URL, such as the token in
+ * `https://user:token@github.com/user/repo.git`. Use this on every URL that
+ * leaves the device: Nostr events, clipboard, display. Strings that don't parse
+ * as URLs are returned unchanged, unless they look like they carry userinfo, in
+ * which case everything before the `@` is dropped.
+ */
+export function stripUrlCredentials(url: string): string {
+  try {
+    const parsed = new URL(url);
+    if (!parsed.username && !parsed.password) {
+      return url;
+    }
+    parsed.username = '';
+    parsed.password = '';
+    return parsed.toString();
+  } catch {
+    return url.replace(/^([a-z][a-z0-9+.-]*:\/\/)[^/@]*@/i, '$1');
+  }
+}
+
+/**
+ * Split a URL with embedded credentials into the URL without them and a
+ * credential for its origin, authenticating the way isomorphic-git would from
+ * the URL itself. A bare `https://token@host` keeps its secret in the username,
+ * so any userinfo makes a credential.
+ */
+export function extractUrlCredentials(url: string): { url: string; credential?: Omit<GitCredential, 'id' | 'name'> } {
+  let parsed: URL;
+  try {
+    parsed = new URL(url);
+  } catch {
+    return { url };
+  }
+  if (!parsed.username && !parsed.password) {
+    return { url };
+  }
+  const username = decodeURIComponent(parsed.username);
+  const password = decodeURIComponent(parsed.password);
+  parsed.username = '';
+  parsed.password = '';
+  return {
+    url: parsed.toString(),
+    credential: { origin: parsed.origin, username, password },
+  };
+}

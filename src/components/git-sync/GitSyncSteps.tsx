@@ -5,6 +5,7 @@ import { ConfigureRepoStep } from './steps/ConfigureRepoStep';
 import { SyncStep } from './steps/SyncStep';
 import { InitSuccessStep } from './steps/InitSuccessStep';
 import type { StepType, ProviderOption } from './types';
+import { stripUrlCredentials } from '@/lib/gitCredentials';
 
 interface GitSyncStepsProps {
   projectId: string;
@@ -19,7 +20,8 @@ export function GitSyncSteps({ projectId, onClose }: GitSyncStepsProps) {
   const remoteUrl = useMemo(() => {
     if (originRemote) {
       try {
-        return new URL(originRemote.url);
+        // Shown, copied, and used for favicons: never with a token in it.
+        return new URL(stripUrlCredentials(originRemote.url));
       } catch {
         return;
       }

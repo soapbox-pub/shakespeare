@@ -1,6 +1,7 @@
 import type { EventTemplate } from 'nostr-tools';
 import type { NostrEvent } from '@nostrify/nostrify';
 import { nip19 } from 'nostr-tools';
+import { stripUrlCredentials } from './gitCredentials';
 
 export interface RepositoryAnnouncementData {
   /** Repository identifier (d tag) */
@@ -75,7 +76,7 @@ export function createRepositoryAnnouncementEvent(
 
   // Add web URLs (all in a single tag per NIP-34)
   if (data.webUrls && data.webUrls.length > 0) {
-    const trimmedUrls = data.webUrls.map(url => url.trim()).filter(url => url);
+    const trimmedUrls = data.webUrls.map(url => stripUrlCredentials(url.trim())).filter(url => url);
     if (trimmedUrls.length > 0) {
       tags.push(['web', ...trimmedUrls]);
     }
@@ -83,7 +84,7 @@ export function createRepositoryAnnouncementEvent(
 
   // Add clone URLs (required, all in a single tag per NIP-34)
   if (data.cloneUrls.length > 0) {
-    const trimmedUrls = data.cloneUrls.map(url => url.trim()).filter(url => url);
+    const trimmedUrls = data.cloneUrls.map(url => stripUrlCredentials(url.trim())).filter(url => url);
     if (trimmedUrls.length > 0) {
       tags.push(['clone', ...trimmedUrls]);
     }

@@ -19,6 +19,7 @@ import type { AppConfig } from '@/contexts/AppContext';
 import { getSentryInstance } from './sentry';
 import { mergeReasoningDetails, type ReasoningDetail } from './reasoningDetails';
 import { CANCELLED_TOOL_RESULT, repairHistory } from './repairHistory';
+import { stripUrlCredentials } from './gitCredentials';
 
 export type AIMessage = OpenAI.Chat.Completions.ChatCompletionMessageParam | {
   role: 'assistant';
@@ -447,7 +448,8 @@ export class SessionManager implements SessionManagerLike {
         let repositoryUrl: string | undefined;
         try {
           const remoteUrl = await this.git.getRemoteURL(`${config.fsPathProjects}/${projectId}`, 'origin');
-          repositoryUrl = remoteUrl || undefined;
+          // This goes into the system prompt: keep any embedded token out of it.
+          repositoryUrl = remoteUrl ? stripUrlCredentials(remoteUrl) : undefined;
         } catch {
           // No repository URL available
         }

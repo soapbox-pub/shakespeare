@@ -22,6 +22,9 @@ import { ArrowUp } from 'lucide-react';
 import { ForcePushDialog } from './ForcePushDialog';
 import { SyncStepError } from './SyncStepError';
 import { useProjectDeploySettings } from '@/hooks/useProjectDeploySettings';
+import { useGitSettings } from '@/hooks/useGitSettings';
+import { extractUrlCredentials } from '@/lib/gitCredentials';
+import type { GitCredential } from '@/contexts/GitSettingsContext';
 
 // Helper function to convert kebab-case to Title Case
 function kebabToTitleCase(str: string): string {
@@ -59,6 +62,21 @@ export function ConfigureRepoStep({
   const { fs } = useFS();
   const { config } = useAppContext();
   const { settings: projectDeploySettings } = useProjectDeploySettings(projectId);
+  const { settings: gitSettings, addCredential, setCredentials } = useGitSettings();
+
+  /** Save a credential, replacing the password of one for the same origin and username. */
+  const saveCredential = (credential: Omit<GitCredential, 'id' | 'name'>) => {
+    const existing = gitSettings.credentials.find(
+      (c) => c.origin === credential.origin && c.username === credential.username,
+    );
+    if (existing) {
+      setCredentials(gitSettings.credentials.map(
+        (c) => c.id === existing.id ? { ...c, password: credential.password } : c,
+      ));
+    } else {
+      addCredential({ ...credential, id: crypto.randomUUID(), name: new URL(credential.origin).hostname });
+    }
+  };
 
   // Auto-update repo name when repo identifier changes (unless manually edited)
   useEffect(() => {
@@ -226,19 +244,30 @@ export function ConfigureRepoStep({
           throw new Error('Repository URL is required');
         }
 
+        // A token pasted into the URL goes into Git settings, not the remote:
+        // the remote's URL is shown, copied, and published (nsite `source`,
+        // NIP-34 `clone`), so it must not carry a secret.
+        const enteredUrl = repositoryUrl.trim();
+        const { url: cleanUrl, credential } = extractUrlCredentials(enteredUrl);
+        if (credential) {
+          saveCredential(credential);
+        }
+
         // Add remote
         await git.addRemote({
           dir,
           remote: 'origin',
-          url: repositoryUrl,
+          url: cleanUrl,
           force: true, // Override if exists
         });
         remoteAdded = true;
 
-        // Push to remote
+        // Push to remote. The first push authenticates from the entered URL,
+        // since this `git` was made before the new credential was saved.
         await git.push({
           dir,
           remote: 'origin',
+          url: enteredUrl,
           ref: gitStatus?.currentBranch || 'main',
           force,
         });

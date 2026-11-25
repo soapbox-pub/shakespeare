@@ -49,6 +49,7 @@ import { RailwayAdapter } from '@/lib/deploy/RailwayAdapter';
 import { readNsiteVfsConfig, writeNsiteVfsConfig } from '@/lib/nsiteConfig';
 import type { NsiteVfsConfig } from '@/lib/nsiteConfig';
 import { projectNameToDTag } from '@/lib/utils/nsite';
+import { stripUrlCredentials } from '@/lib/gitCredentials';
 
 /**
  * Normalize a URL string to ensure it has a protocol
@@ -66,7 +67,8 @@ async function resolveNsiteSourceUrl(remoteUrl: string | null): Promise<string |
   }
 
   if (/^https?:\/\//i.test(remoteUrl)) {
-    return remoteUrl;
+    // The manifest is public: never publish a token embedded in the remote.
+    return stripUrlCredentials(remoteUrl);
   }
 
   if (remoteUrl.startsWith('nostr://')) {

@@ -1,5 +1,20 @@
 # Changelog
 
+## [9.23.0] - 2026-11-25
+
+### Added
+- Buy credits with onchain bitcoin, alongside card and Lightning, wherever your provider accepts it — scan the QR code, and Shakespeare shows your payment confirming until the credits arrive
+- Shakespeare can keep working with its window closed in apps that support it, like Din and Tenna, showing a notification while it works
+- Click a tool call to see the images Shakespeare looked at, like screenshots of your app's preview
+
+### Changed
+- A fresh new look: rounded panels on a soft purple backdrop, a deeper dark theme, and a title bar that matches the page
+
+### Fixed
+- Access tokens pasted into a repository URL stay private: they're saved with your Git credentials instead of being published when you deploy to nsite, shown in the sync panel, or sent to your AI provider
+- Stopping Shakespeare in the middle of a task no longer loses the rest of the conversation
+- Shakespeare no longer stops seeing images after an unrelated error from your AI provider
+
 ## [9.22.0] - 2026-10-23
 
 ### Added
